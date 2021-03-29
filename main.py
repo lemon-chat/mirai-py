@@ -1,11 +1,15 @@
 import mirai
-from mirai.api import MiraiHttpApi, MiraiApi
+from mirai.api import MiraiApi
+from mirai.application import MiraiApp
 from mirai.message.chain import MessageChain
 from mirai.message.element import Plain
-if __name__ == "__main__":
-    lowlevel_api = MiraiHttpApi('http://localhost:8080')
-    api = MiraiApi('http://localhost:8080', '')
 
-    with api.get_session('') as sess:
-        message = MessageChain.create([Plain('测试')])
-        sess.sendGroupMessage(8888, message)
+import time
+
+if __name__ == "__main__":
+    with MiraiApp('http://localhost:8080', '', '') as app:
+        def onGroupMessage(event):
+            message = MessageChain.create([Plain('是的呢')])
+            app.session.sendGroupMessage(target=1038774584, messageChain=message)
+        app.register('GroupMessage', onGroupMessage)
+        app.blocking_start()
