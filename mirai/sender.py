@@ -29,15 +29,15 @@ class GroupMessageSender(object):
         )
 
 
-class FriendMessageSender(object):
-    def __init__(self: 'FriendMessageSender', id: int, nickname: str, remark: str) -> NoReturn:
+class Friend(object):
+    def __init__(self: 'Friend', id: int, nickname: str, remark: str) -> NoReturn:
         self.id = id
         self.nickname = nickname
         self.remark = remark
 
     @classmethod
-    def parse_obj(cls, obj: Dict) -> "FriendMessageSender":
-        return FriendMessageSender(
+    def parse_obj(cls, obj: Dict) -> "Friend":
+        return Friend(
             id=obj['id'],
             nickname=obj['nickname'],
             remark=obj['remark'])

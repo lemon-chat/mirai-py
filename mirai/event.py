@@ -3,7 +3,7 @@ from typing import Dict
 
 from mirai.message.chain import MessageChain
 from mirai.message.messages import Message
-from mirai.sender import BaseSender, FriendMessageSender, GroupMessageSender
+from mirai.sender import BaseSender, Friend, GroupMessageSender
 
 
 class BaseEvent(object):
@@ -97,7 +97,7 @@ class GroupMessageEvent(BaseEvent):
 class FriendMessageEvent(BaseEvent):
     name = 'FriendMessage'
 
-    def __init__(self, messageChain: MessageChain, sender: FriendMessageSender):
+    def __init__(self, messageChain: MessageChain, sender: Friend):
         self.messageChain = messageChain
         self.sender = sender
 
@@ -105,4 +105,4 @@ class FriendMessageEvent(BaseEvent):
     def parse_obj(cls, obj: Dict) -> "FriendMessageEvent":
         return FriendMessageEvent(
             messageChain=MessageChain.parse_obj(obj['messageChain']),
-            sender=FriendMessageSender.parse_obj(obj['sender']))
+            sender=Friend.parse_obj(obj['sender']))

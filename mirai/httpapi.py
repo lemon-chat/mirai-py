@@ -8,11 +8,13 @@ from urllib.parse import urljoin
 from urllib.parse import quote
 from tenacity import retry
 
+
 class MiraiHttpApi(object):
     '''
     底层HTTP接口
     文档地址：https://github.com/project-mirai/mirai-api-http/blob/master/docs/API.md
     '''
+
     def __init__(self, host: str):
         self.host = host
 
@@ -54,7 +56,8 @@ class MiraiHttpApi(object):
         if response.status_code != 200:
             raise Exception("异常状态码" + str(response.status_code))
         obj = json.loads(response.text)
-        self.check_code(obj["code"])
+        if "code" in obj:
+            self.check_code(obj["code"])
 
         return obj
 
@@ -65,15 +68,16 @@ class MiraiHttpApi(object):
         if response.status_code != 200:
             raise Exception("异常状态码" + str(response.status_code))
         obj = json.loads(response.text)
-        self.check_code(obj["code"])
+        if "code" in obj:
+            self.check_code(obj["code"])
 
         return obj
 
     @retry
     def __getattr__(self, name: str):
-        get_list = ['about', 'fetchMessage', 'fetchLatestMessage', 'peekMessage', 'peekLatestMessage']
+        get_list = ['about', 'fetchMessage', 'fetchLatestMessage', 'peekMessage',
+                    'peekLatestMessage', 'friendList', 'groupList', 'memberList']
         if name in get_list:
             return partial(self.query_get, name)
         else:
             return partial(self.query_post, name)
-

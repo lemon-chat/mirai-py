@@ -104,3 +104,24 @@ class MiraiSession(object):
         ret = self.llapi.peekLatestMessage(sessionKey=self.sessionKey, count=count)
         data = ret['data']
         return data
+
+    def friendList(self):
+        '''
+        使用此方法获取bot的好友列表
+        '''
+        ret = self.llapi.friendList(sessionKey=self.sessionKey)
+        return ret
+
+    def groupList(self):
+        '''
+        使用此方法获取bot的群列表
+        '''
+        ret = self.llapi.groupList(sessionKey=self.sessionKey)
+        return ret
+
+    def memberList(self, target:int):
+        '''
+        使用此方法获取bot的群列表
+        '''
+        ret = self.llapi.memberList(sessionKey=self.sessionKey, target=target)
+        return ret

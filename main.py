@@ -33,6 +33,10 @@ def onBotUnmute(app: MiraiApp, event: BotUnmuteEvent):
 
 if __name__ == "__main__":
     with MiraiApp('http://localhost:8080', '', '') as app:
+        # 显示所有好友
+        for f in app.friendList():
+            print(f.nickname)
+        # 事件响应注册
         app.register('GroupMessage', onGroupMessage)
         app.register('FriendMessage', onFriendMessage)
         app.register(BotUnmuteEvent, onBotUnmute)

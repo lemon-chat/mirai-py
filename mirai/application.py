@@ -1,5 +1,5 @@
 import json
-from typing import Callable, NoReturn, Dict, Union, Type
+from typing import Callable, NoReturn, Dict, Union, Type, List
 import time, threading
 import concurrent
 from collections import defaultdict
@@ -8,7 +8,7 @@ from mirai.api import MiraiApi
 from mirai.message.chain import MessageChain
 from mirai.message.messages import Message
 from mirai.event import BaseEvent, GroupMessageEvent, FriendMessageEvent
-from mirai.sender import BaseSender, FriendMessageSender, GroupMessageSender
+from mirai.sender import BaseSender, Friend, Group, GroupMessageSender
 
 class Listener(object):
     def __init__(self, event: str, handler:Callable):
@@ -38,13 +38,13 @@ class MiraiApp(object):
             listener.handler(app, handler_event)
     
     def fn_message_thread(self):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             history = []
             quick_history_set = set()
             loop_count = 0
             while True:
                 if loop_count % 1000 == 0:
-                    quick_history_set = set([json.dumps(d) for d in history[50:]])
+                    quick_history_set = set([json.dumps(d) for d in history[-50:]])
 
                 ret = self.session.peekLatestMessage(count=50)
                 for each_event in ret:
@@ -54,7 +54,7 @@ class MiraiApp(object):
                         quick_history_set.add(event_id)
                         executor.submit(self.dispatch_event, self, each_event)
 
-                time.sleep(3)
+                time.sleep(2)
                 loop_count += 1
 
     def blocking_start(self) -> NoReturn:
@@ -83,9 +83,12 @@ class MiraiApp(object):
         else:
             raise Exception("parameter event must be str or BaseEvent")
 
-
     def sendGroupMessage(self, target: int, message: MessageChain) -> Message:
         return self.session.sendGroupMessage(target=target, messageChain=message)
     
     def sendFriendMessage(self, target: int, message: MessageChain) -> Message:
         return self.session.sendFriendMessage(target=target, messageChain=message)
+
+    def friendList(self) -> List[Friend]:
+        ret = self.session.friendList()
+        return [Friend.parse_obj(f) for f in ret]
