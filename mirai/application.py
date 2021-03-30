@@ -54,7 +54,7 @@ class MiraiApp(object):
                         quick_history_set.add(event_id)
                         executor.submit(self.dispatch_event, self, each_event)
 
-                time.sleep(2)
+                time.sleep(1)
                 loop_count += 1
 
     def blocking_start(self) -> NoReturn:
