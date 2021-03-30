@@ -1,5 +1,5 @@
 import json
-from typing import Callable, NoReturn
+from typing import Callable, NoReturn, Dict, Union, Type
 import time, threading
 import concurrent
 from collections import defaultdict
@@ -8,7 +8,7 @@ from mirai.api import MiraiApi
 from mirai.message.chain import MessageChain
 from mirai.message.messages import Message
 from mirai.event import BaseEvent, GroupMessageEvent, FriendMessageEvent
-from mirai.sender import FriendSender
+from mirai.sender import BaseSender, FriendMessageSender, GroupMessageSender
 
 class Listener(object):
     def __init__(self, event: str, handler:Callable):
@@ -25,13 +25,16 @@ class MiraiApp(object):
         self.listeners = defaultdict(list)
 
     @staticmethod
-    def dispatch_event(app, event):
+    def dispatch_event(app, event: Dict):
+        if event['type'] not in ['GroupMessage', 'FriendMessage']:
+            print(event)
         event_type = event['type']
         for listener in app.listeners[event_type]:
-            if event_type == 'GroupMessage':
-                handler_event = GroupMessageEvent(MessageChain.parse_obj(event['messageChain']), event['sender'])
-            elif event_type == 'FriendMessage':
-                handler_event = FriendMessageEvent(MessageChain.parse_obj(event['messageChain']), FriendSender(**event['sender']))
+            for subEventClass in BaseEvent.__subclasses__():
+                subEventClassName = event_type + 'Event' if not event_type.endswith('Event') else event_type
+                if subEventClass.__name__ == subEventClassName:
+                    handler_event = subEventClass.parse_obj(event)
+                    break
             listener.handler(app, handler_event)
     
     def fn_message_thread(self):
@@ -51,7 +54,7 @@ class MiraiApp(object):
                         quick_history_set.add(event_id)
                         executor.submit(self.dispatch_event, self, each_event)
 
-                time.sleep(1)
+                time.sleep(3)
                 loop_count += 1
 
     def blocking_start(self) -> NoReturn:
@@ -72,8 +75,14 @@ class MiraiApp(object):
     def __exit__(self, type, value, trace) -> NoReturn:
         self.leave()
 
-    def register(self, event: str, handler: Callable) -> NoReturn:
-        self.listeners[event].append(Listener(event, handler))
+    def register(self, event: Union[str, Type], handler: Callable) -> NoReturn:
+        if isinstance(event, str):
+            self.listeners[event].append(Listener(event, handler))
+        elif issubclass(event, BaseEvent):
+            self.listeners[event.name].append(Listener(event.name, handler))
+        else:
+            raise Exception("parameter event must be str or BaseEvent")
+
 
     def sendGroupMessage(self, target: int, message: MessageChain) -> Message:
         return self.session.sendGroupMessage(target=target, messageChain=message)
