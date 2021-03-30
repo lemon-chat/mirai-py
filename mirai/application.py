@@ -1,12 +1,14 @@
 import json
-from typing import Callable
+from typing import Callable, NoReturn
 import time, threading
 import concurrent
 from collections import defaultdict
 
 from mirai.api import MiraiApi
 from mirai.message.chain import MessageChain
-from mirai.event import BaseEvent, GroupMessageEvent
+from mirai.message.messages import Message
+from mirai.event import BaseEvent, GroupMessageEvent, FriendMessageEvent
+from mirai.sender import FriendSender
 
 class Listener(object):
     def __init__(self, event: str, handler:Callable):
@@ -27,8 +29,10 @@ class MiraiApp(object):
         event_type = event['type']
         for listener in app.listeners[event_type]:
             if event_type == 'GroupMessage':
-                handler_arg = GroupMessageEvent(MessageChain.parse_obj(event['messageChain']), event['sender'])
-                listener.handler(handler_arg)
+                handler_event = GroupMessageEvent(MessageChain.parse_obj(event['messageChain']), event['sender'])
+            elif event_type == 'FriendMessage':
+                handler_event = FriendMessageEvent(MessageChain.parse_obj(event['messageChain']), FriendSender(**event['sender']))
+            listener.handler(app, handler_event)
     
     def fn_message_thread(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -50,14 +54,14 @@ class MiraiApp(object):
                 time.sleep(1)
                 loop_count += 1
 
-    def blocking_start(self):
+    def blocking_start(self) -> NoReturn:
         self.fn_message_thread()
 
-    def auth(self):
+    def auth(self) -> NoReturn:
         self.session = self.api.get_session(self.account)
         self.session.auth()
 
-    def leave(self):
+    def leave(self) -> NoReturn:
         self.session.leave()
         self.session = None
 
@@ -65,8 +69,14 @@ class MiraiApp(object):
         self.auth()
         return self
 
-    def __exit__(self, type, value, trace):
+    def __exit__(self, type, value, trace) -> NoReturn:
         self.leave()
 
-    def register(self, event: str, handler: Callable):
+    def register(self, event: str, handler: Callable) -> NoReturn:
         self.listeners[event].append(Listener(event, handler))
+
+    def sendGroupMessage(self, target: int, message: MessageChain) -> Message:
+        return self.session.sendGroupMessage(target=target, messageChain=message)
+    
+    def sendFriendMessage(self, target: int, message: MessageChain) -> Message:
+        return self.session.sendFriendMessage(target=target, messageChain=message)

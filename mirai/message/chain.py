@@ -10,8 +10,9 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    Optional,
+    Optional
 )
+import copy
 from .element import Element, InternalElement, ExternalElement
 
 from pydantic import BaseModel
@@ -63,3 +64,120 @@ class MessageChain(BaseModel):
 
     def dict(self):
         return [m.dict() for m in self.messages]
+
+    
+    def subchain(self, item: slice, ignore_text_index: bool = False) -> "MessageChain":
+        """对消息链执行分片操作
+
+        Args:
+            item (slice): 这个分片的 `start` 和 `end` 的 Type Annotation 都是 `Optional[MessageIndex]`
+
+        Raises:
+            TypeError: TextIndex 取到了错误的位置
+
+        Returns:
+            MessageChain: 分片后得到的新消息链, 绝对是原消息链的子集.
+        """
+        from .element import Plain
+
+        result = copy.copy(self.messages)
+        if item.start:
+            first_slice = result[item.start[0] :]
+            if item.start[1] is not None and first_slice:  # text slice
+                if not isinstance(first_slice[0], Plain):
+                    if not ignore_text_index:
+                        raise TypeError(
+                            "the sliced chain does not starts with a Plain: {}".format(
+                                first_slice[0]
+                            )
+                        )
+                    else:
+                        result = first_slice
+                else:
+                    final_text = first_slice[0].text[item.start[1] :]
+                    result = [
+                        *([Plain(final_text)] if final_text else []),
+                        *first_slice[1:],
+                    ]
+            else:
+                result = first_slice
+        if item.stop:
+            first_slice = result[: item.stop[0]]
+            if item.stop[1] is not None and first_slice:  # text slice
+                if not isinstance(first_slice[-1], Plain):
+                    raise TypeError(
+                        "the sliced chain does not ends with a Plain: {}".format(
+                            first_slice[-1]
+                        )
+                    )
+                final_text = first_slice[-1].text[: item.stop[1]]
+                result = [
+                    *first_slice[:-1],
+                    *([Plain(final_text)] if final_text else []),
+                ]
+            else:
+                result = first_slice
+        return MessageChain.create(result)
+    
+    def has(self, element_class: Element) -> bool:
+        """判断消息链中是否含有特定类型的消息元素
+
+        Args:
+            element_class (T): 需要判断的消息元素的类型, 例如 "Plain", "At", "Image" 等.
+
+        Returns:
+            bool: 判断结果
+        """
+        return element_class in [type(i) for i in self.messages]
+
+    def get(self, element_class: Element) -> List[Element]:
+        """获取消息链中所有特定类型的消息元素
+
+        Args:
+            element_class (T): 指定的消息元素的类型, 例如 "Plain", "At", "Image" 等.
+
+        Returns:
+            List[T]: 获取到的符合要求的所有消息元素; 另: 可能是空列表([]).
+        """
+        return [i for i in self.messages if type(i) is element_class]
+
+    def getOne(self, element_class: Element, index: int) -> Element:
+        """获取消息链中第 index + 1 个特定类型的消息元素
+
+        Args:
+            element_class (Type[Element]): 指定的消息元素的类型, 例如 "Plain", "At", "Image" 等.
+            index (int): 索引, 从 0 开始数
+
+        Returns:
+            T: 消息链第 index + 1 个特定类型的消息元素
+        """
+        return self.get(element_class)[index]
+
+    def getFirst(self, element_class: Element) -> Element:
+        """获取消息链中第 1 个特定类型的消息元素
+
+        Args:
+            element_class (Type[Element]): 指定的消息元素的类型, 例如 "Plain", "At", "Image" 等.
+
+        Returns:
+            T: 消息链第 1 个特定类型的消息元素
+        """
+        return self.getOne(element_class, 0)
+
+    def asDisplay(self) -> str:
+        """获取以字符串形式表示的消息链, 且趋于通常你见到的样子.
+
+        Returns:
+            str: 以字符串形式表示的消息链
+        """
+        return "".join(i.asDisplay() for i in self.messages)
+    
+    def __getitem__(self, item: Union[Type[Element], slice]):
+        if isinstance(item, slice):
+            return self.subchain(item)
+        elif issubclass(item, Element):
+            return self.get(item)
+        else:
+            raise NotImplementedError(
+                "{0} is not allowed for item getting".format(type(item))
+            )

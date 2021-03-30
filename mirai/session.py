@@ -71,6 +71,30 @@ class MiraiSession(object):
             )
         
         return Message(ret['messageId'], messageChain)
+
+    def sendFriendMessage(self, target:int, messageChain: MessageChain, quote:Optional[int]=None):
+        '''
+        sessionKey	    String	已经激活的Session
+        target	        Long	可选，发送消息目标群的群号
+        qq  	        Long	可选，target与qq中需要有一个参数不为空，当target不为空时qq将被忽略，同target
+        quote	        Int	    引用一条消息的messageId进行回复
+        messageChain	Array	消息链，是一个消息对象构成的数组
+        '''
+        if quote is None:
+            ret = self.llapi.sendFriendMessage(
+                sessionKey=self.sessionKey,
+                target=target,
+                messageChain=messageChain.dict()
+            )
+        else:
+            ret = self.llapi.sendFriendMessage(
+                sessionKey=self.sessionKey,
+                target=target,
+                quote=quote,
+                messageChain=messageChain.dict()
+            )
+        
+        return Message(ret['messageId'], messageChain)
         
     def peekLatestMessage(self, count:int):
         '''
